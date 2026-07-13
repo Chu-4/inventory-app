@@ -115,7 +115,7 @@ export default function App() {
           colorPrimary: '#e67e22',
           colorBgBase: '#faf9f7',
           borderRadius: 12,
-          fontFamily: "'Inter', 'Noto Sans SC', -apple-system, sans-serif",
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
           colorBorder: '#e5e5ea',
           colorText: '#1a1a1a',
           colorTextSecondary: '#636366',
