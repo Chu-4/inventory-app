@@ -10,6 +10,7 @@ import ItemFormPage from './pages/ItemFormPage';
 import SearchPage from './pages/SearchPage';
 import FavoritesPage from './pages/FavoritesPage';
 import TimeBrowsePage from './pages/TimeBrowsePage';
+import AuthPage from './pages/AuthPage';
 
 const TAB_PAGES = ['home', 'categories', 'rooms', 'profile'];
 
@@ -25,6 +26,7 @@ function buildNav(page, data = {}, prev = {}) {
 }
 
 export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
   const [nav, setNav] = useState(HOME_NAV);
   const [history, setHistory] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -68,7 +70,7 @@ export default function App() {
       case 'rooms':
         return <RoomsPage onNavigate={navigateTo} key={key} />;
       case 'profile':
-        return <ProfilePage onNavigate={navigateTo} onRefresh={handleRefresh} key={key} />;
+        return <ProfilePage onNavigate={navigateTo} onRefresh={handleRefresh} onLogout={() => setIsLoggedIn(false)} key={key} />;
       case 'search':
         return <SearchPage {...navProps} key={key} />;
       case 'favorites':
@@ -125,7 +127,10 @@ export default function App() {
     >
       <div className="app-shell">
         <div className="app-content">
-          {renderPage()}
+          {!isLoggedIn
+            ? <AuthPage onLogin={() => setIsLoggedIn(true)} />
+            : renderPage()
+          }
         </div>
       </div>
     </ConfigProvider>

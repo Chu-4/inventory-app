@@ -1,21 +1,37 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Divider, Typography, Upload, Modal } from 'antd';
-import { DownloadOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Modal, message } from 'antd';
+import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { api } from '../utils/api';
 import BottomNav from '../components/BottomNav';
 
-const { Text } = Typography;
-
-export default function ProfilePage({ onNavigate, onRefresh }) {
+export default function ProfilePage({ onNavigate, onRefresh, onLogout }) {
   const [items, setItems] = useState([]);
-  const [favoriteCount, setFavoriteCount] = useState(0);
+  const [username, setUsername] = useState(localStorage.getItem('username') || '');
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState('');
 
   useEffect(() => {
     api.getItems().then(setItems);
-    api.getFavoriteItems().then(favs => setFavoriteCount(favs.length));
   }, []);
 
-  const totalValue = items.reduce((sum, i) => sum + (parseFloat(i.price) || 0), 0);
+  const avatarChar = username.charAt(0).toUpperCase() || '?';
+
+  const handleEditUsername = () => {
+    setNewName(username);
+    setEditingName(true);
+  };
+
+  const handleSaveUsername = async () => {
+    if (!newName.trim() || newName.trim() === username) { setEditingName(false); return; }
+    try {
+      const res = await api.updateUsername(newName.trim());
+      localStorage.setItem('username', res.username);
+      setUsername(res.username);
+      setEditingName(false);
+    } catch (e) {
+      message.error(e.message || '修改失败');
+    }
+  };
 
   const handleExport = async () => {
     const [its, cats, rms] = await Promise.all([api.getItems(), api.getCategories(), api.getRooms()]);
@@ -29,20 +45,22 @@ export default function ProfilePage({ onNavigate, onRefresh }) {
     URL.revokeObjectURL(url);
   };
 
-  const handleImport = (file) => {
+  const handleImport = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result);
         Modal.confirm({
           title: '确认导入',
-          content: '这将覆盖现有的所有数据，确认继续？',
+          content: '这将添加导入的数据，确认继续？',
           okText: '确认导入',
           cancelText: '取消',
           onOk: async () => {
-            // 逐条写入，简单实现
             if (data.items) await Promise.all(data.items.map(i => api.addItem(i)));
             onRefresh?.();
+            message.success('导入成功');
           },
         });
       } catch {
@@ -50,68 +68,80 @@ export default function ProfilePage({ onNavigate, onRefresh }) {
       }
     };
     reader.readAsText(file);
-    return false;
+    e.target.value = '';
   };
 
-  const handleClearAll = () => {
+  const handleLogout = () => {
     Modal.confirm({
-      title: '清空所有数据',
-      content: '此操作无法撤销，所有物品和分类将被永久删除。',
-      okText: '确认清空',
+      title: '退出登录',
+      content: '确认退出登录？',
+      okText: '退出',
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: () => {
-        storage.clearAll();
-        onRefresh?.();
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        onLogout?.();
       },
     });
   };
 
   return (
     <div className="page page--profile">
-      <div className="profile-header">
-        <h1 className="page-top-title">我的</h1>
-      </div>
+      <div className="profile-content profile-content--new">
 
-      <div className="profile-content">
-        <Card className="profile-card" variant="outlined">
-          <Text className="profile-card-label">数据统计</Text>
-          {[
-            { label: '物品总数', value: `${items.length} 件` },
-            { label: '收藏数', value: `${favoriteCount} 件` },
-            { label: '记录总价值', value: `¥${totalValue.toFixed(2)}` },
-          ].map(({ label, value }, idx, arr) => (
-            <div key={label}>
-              <div className="profile-stat-row">
-                <Text>{label}</Text>
-                <span className="profile-stat-value">{value}</span>
-              </div>
-              {idx < arr.length - 1 && <Divider style={{ margin: 0 }} />}
+        {/* 用户信息卡片 */}
+        <div className="profile-user-card">
+          <div className="profile-avatar">{avatarChar}</div>
+          <div className="profile-user-info">
+            <div className="profile-username-row">
+              {editingName ? (
+                <input
+                  className="profile-username-input"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  onBlur={handleSaveUsername}
+                  onKeyDown={e => e.key === 'Enter' && handleSaveUsername()}
+                  autoFocus
+                />
+              ) : (
+                <span className="profile-username">{username}</span>
+              )}
+              <button type="button" className="profile-edit-btn" onClick={handleEditUsername}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="#71717a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#71717a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
             </div>
-          ))}
-        </Card>
-
-        <Text className="profile-section-label">数据管理</Text>
-        <div className="profile-actions">
-          <Button block size="large" icon={<DownloadOutlined />} onClick={handleExport} className="profile-action-btn">
-            导出数据 (JSON)
-          </Button>
-          <Upload accept=".json" showUploadList={false} beforeUpload={handleImport}>
-            <Button block size="large" icon={<UploadOutlined />} className="profile-action-btn" style={{ width: '100%' }}>
-              导入数据 (JSON)
-            </Button>
-          </Upload>
-          <Button block size="large" danger icon={<DeleteOutlined />} onClick={handleClearAll} className="profile-action-btn">
-            清空所有数据
-          </Button>
+            <p className="profile-item-count">{items.length} 件物品</p>
+          </div>
         </div>
 
-        <div className="profile-about">
-          <div className="profile-about-title">物品整理 v2.0</div>
-          <Text className="profile-about-text">
-            数据保存在服务器，多设备同步可用
-          </Text>
+        {/* 数据管理 */}
+        <div className="profile-section">
+          <button type="button" className="profile-action-row" onClick={handleExport}>
+            <DownloadOutlined style={{ fontSize: 18, color: '#71717a' }} />
+            <span>导出数据 (JSON)</span>
+          </button>
+          <div className="profile-divider" />
+          <label className="profile-action-row">
+            <UploadOutlined style={{ fontSize: 18, color: '#71717a' }} />
+            <span>导入数据 (JSON)</span>
+            <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
+          </label>
         </div>
+
+        {/* 关于 + 退出 */}
+        <div className="profile-about-block">
+          <p className="profile-app-name">物品整理 v2.0</p>
+          <p className="profile-app-desc">一款帮助你管理家中物品的应用</p>
+        </div>
+
+        <button type="button" className="profile-logout-btn" onClick={handleLogout}>
+          退出登录
+        </button>
+
       </div>
 
       <BottomNav activeId="profile" onNavigate={onNavigate} />

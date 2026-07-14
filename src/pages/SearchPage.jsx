@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
 import { api } from '../utils/api';
 import { searchUtils } from '../utils/helpers';
@@ -9,15 +9,43 @@ export default function SearchPage({ onNavigate, onBack, initialKeyword = '' }) 
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState(() => {
     try { return JSON.parse(localStorage.getItem('recent_searches') || '[]') } catch { return [] }
   });
 
+  // 进入搜索页只拉分类和房间（用于展示标签、按名称匹配）
   useEffect(() => {
-    api.getItems().then(setItems);
-    api.getCategories().then(setCategories);
-    api.getRooms().then(setRooms);
+    Promise.all([api.getCategories(), api.getRooms()])
+      .then(([cats, rms]) => {
+        setCategories(cats);
+        setRooms(rms);
+      });
   }, []);
+
+  // 有搜索词时才拉物品，并做防抖
+  useEffect(() => {
+    const kw = keyword.trim();
+    if (!kw) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const all = await api.getItems();
+        setItems(searchUtils.search(all, kw, { categories, rooms }));
+      } catch {
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [keyword, categories, rooms]);
 
   const saveRecentSearch = (kw) => {
     const list = [kw, ...recentSearches.filter(s => s !== kw)].slice(0, 8);
@@ -25,14 +53,13 @@ export default function SearchPage({ onNavigate, onBack, initialKeyword = '' }) 
     localStorage.setItem('recent_searches', JSON.stringify(list));
   };
 
-  const results = useMemo(() => {
-    if (!keyword.trim()) return [];
-    return searchUtils.search(items, keyword, { categories, rooms });
-  }, [items, keyword, categories, rooms]);
-
   const handleSearch = (kw) => {
     setKeyword(kw);
-    if (kw.trim()) saveRecentSearch(kw.trim());
+  };
+
+  const handleSearchTag = (tag) => {
+    setKeyword(tag);
+    saveRecentSearch(tag);
   };
 
   const handleResultClick = (item) => {
@@ -64,7 +91,7 @@ export default function SearchPage({ onNavigate, onBack, initialKeyword = '' }) 
           <div className="search-section-title">最近搜索</div>
           <div className="search-tags">
             {recentSearches.map(tag => (
-              <button key={tag} type="button" className="search-tag" onClick={() => handleSearch(tag)}>
+              <button key={tag} type="button" className="search-tag" onClick={() => handleSearchTag(tag)}>
                 {tag}
               </button>
             ))}
@@ -75,11 +102,13 @@ export default function SearchPage({ onNavigate, onBack, initialKeyword = '' }) 
       {keyword.trim() && (
         <div className="search-section">
           <div className="search-section-title">搜索结果</div>
-          {results.length === 0 ? (
+          {loading ? (
+            <div className="empty-state empty-state--compact"><p>搜索中...</p></div>
+          ) : items.length === 0 ? (
             <div className="empty-state empty-state--compact"><p>没有找到匹配的物品</p></div>
           ) : (
             <div className="search-results">
-              {results.map(item => (
+              {items.map(item => (
                 <ItemCard
                   key={item.id}
                   item={item}

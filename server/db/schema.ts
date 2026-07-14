@@ -1,16 +1,25 @@
 import { sqliteTable, text, real, integer } from 'drizzle-orm/sqlite-core'
 
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(),
+  username: text('username').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  createdAt: text('created_at').notNull(),
+})
+
 export const categories = sqliteTable('categories', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   color: text('color').notNull(),
-  parentId: text('parent_id'), // 用于子分类，如"同人本"属于"书籍"
+  parentId: text('parent_id'),
+  userId: text('user_id').notNull(),
 })
 
 export const rooms = sqliteTable('rooms', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   icon: text('icon').notNull().default('living'),
+  userId: text('user_id').notNull(),
 })
 
 export const items = sqliteTable('items', {
@@ -24,9 +33,10 @@ export const items = sqliteTable('items', {
   imageUrl: text('image_url'),
   favorite: integer('favorite', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
+  userId: text('user_id').notNull(),
 })
 
-// 推导出 TS 类型，后续路由里直接用
+export type User = typeof users.$inferSelect
 export type Category = typeof categories.$inferSelect
 export type Room = typeof rooms.$inferSelect
 export type Item = typeof items.$inferSelect

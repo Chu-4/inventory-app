@@ -1,10 +1,24 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
+function getToken() {
+  return localStorage.getItem('token')
+}
+
 async function request(path, options = {}) {
+  const token = getToken()
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     ...options,
   })
+  if (res.status === 401) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    window.location.hash = '#login'
+    throw new Error('未登录')
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error || `请求失败 ${res.status}`)
@@ -12,8 +26,21 @@ async function request(path, options = {}) {
   return res.json()
 }
 
-// ─── 分类 ───────────────────────────────────────────
 export const api = {
+  // 认证
+  register: (username, password) => request('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  }),
+  login: (username, password) => request('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  }),
+  updateUsername: (username) => request('/api/auth/username', {
+    method: 'PUT',
+    body: JSON.stringify({ username }),
+  }),
+
   // 分类
   getCategories: () => request('/api/categories'),
   addCategory: (name, color) => request('/api/categories', {
