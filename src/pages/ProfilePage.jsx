@@ -35,7 +35,23 @@ export default function ProfilePage({ onNavigate, onRefresh, onLogout }) {
 
   const handleExport = async () => {
     const [its, cats, rms] = await Promise.all([api.getItems(), api.getCategories(), api.getRooms()]);
-    const data = { items: its, categories: cats, rooms: rms, exportTime: new Date().toISOString() };
+    const catById = Object.fromEntries(cats.map(c => [c.id, c.name]));
+    const roomById = Object.fromEntries(rms.map(r => [r.id, r.name]));
+
+    const data = {
+      exportTime: new Date().toISOString(),
+      items: its.map(({ userId, ...item }) => ({
+        name: item.name,
+        category: catById[item.categoryId] ?? null,
+        room: roomById[item.roomId] ?? null,
+        price: item.price,
+        quantity: item.quantity,
+        date: item.date,
+        notes: item.description,
+        favorite: item.favorite,
+      })),
+    };
+
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -58,7 +74,24 @@ export default function ProfilePage({ onNavigate, onRefresh, onLogout }) {
           okText: '确认导入',
           cancelText: '取消',
           onOk: async () => {
-            if (data.items) await Promise.all(data.items.map(i => api.addItem(i)));
+            const [cats, rms] = await Promise.all([api.getCategories(), api.getRooms()]);
+            const catByName = Object.fromEntries(cats.map(c => [c.name, c.id]));
+            const roomByName = Object.fromEntries(rms.map(r => [r.name, r.id]));
+
+            if (data.items) {
+              await Promise.all(data.items.map(i => api.addItem({
+                name: i.name,
+                categoryId: i.categoryId ?? catByName[i.category] ?? null,
+                roomId: i.roomId ?? roomByName[i.room] ?? null,
+                price: i.price ?? null,
+                quantity: i.quantity ?? 1,
+                date: i.date ?? null,
+                notes: i.notes ?? i.description ?? null,
+                description: i.notes ?? i.description ?? null,
+                favorite: i.favorite ?? false,
+                imageUrl: i.imageUrl ?? null,
+              })));
+            }
             onRefresh?.();
             message.success('导入成功');
           },

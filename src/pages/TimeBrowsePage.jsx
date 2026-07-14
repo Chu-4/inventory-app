@@ -1,11 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LeftOutlined } from '@ant-design/icons';
-import { storage } from '../utils/storage';
+import { api } from '../utils/api';
 import { searchUtils } from '../utils/helpers';
 import ItemCard from '../components/ItemCard';
 
 export default function TimeBrowsePage({ onNavigate, onBack }) {
-  const [items] = useState(storage.getItems());
+  const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [rooms, setRooms] = useState([]);
+
+  useEffect(() => {
+    api.getItems().then(setItems);
+    api.getCategories().then(setCategories);
+    api.getRooms().then(setRooms);
+  }, []);
 
   const grouped = useMemo(() => searchUtils.groupByMonth(items), [items]);
 
@@ -34,6 +42,8 @@ export default function TimeBrowsePage({ onNavigate, onBack }) {
                   <ItemCard
                     key={item.id}
                     item={item}
+                    categories={categories}
+                    rooms={rooms}
                     onClick={() => onNavigate('item-detail', { itemId: item.id })}
                   />
                 ))}

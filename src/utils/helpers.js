@@ -73,7 +73,8 @@ export const searchUtils = {
   groupByMonth(items) {
     const groups = {};
     items.forEach(item => {
-      const key = item.date ? item.date.slice(0, 7) : '未知';
+      const dateStr = item.date || item.createdAt;
+      const key = dateStr ? dateStr.slice(0, 7) : '未知';
       if (!groups[key]) groups[key] = [];
       groups[key].push(item);
     });

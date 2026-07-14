@@ -1,4 +1,12 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+// 生产默认同域 /api/...；开发默认 localhost:3001；可用 VITE_API_URL 覆盖
+const BASE_URL = (
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.PROD ? '' : 'http://localhost:3001')
+).replace(/\/$/, '')
+
+function apiUrl(path) {
+  return `${BASE_URL}${path}`
+}
 
 function getToken() {
   return localStorage.getItem('token')
@@ -6,7 +14,7 @@ function getToken() {
 
 async function request(path, options = {}) {
   const token = getToken()
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(apiUrl(path), {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

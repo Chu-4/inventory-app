@@ -71,9 +71,8 @@ runMigration('0001_init', () => {
   `)
 })
 
-// 以后加新字段就在这里追加，例如：
-// runMigration('0002_items_add_location', () => {
-//   db.run(sql`ALTER TABLE items ADD COLUMN location TEXT`)
-// })
+runMigration('0002_items_add_date', () => {
+  db.run(sql`ALTER TABLE items ADD COLUMN date TEXT`)
+})
 
 console.log('数据库迁移完成')

@@ -43,8 +43,9 @@ itemsRouter.post('/', async (c) => {
     roomId: body.roomId ?? null,
     price: body.price ?? null,
     quantity: body.quantity ?? 1,
-    description: body.description ?? null,
+    description: body.description ?? body.notes ?? null,
     imageUrl: body.imageUrl ?? null,
+    date: body.date || null,
     favorite: false,
     createdAt: new Date().toISOString(),
     userId,
@@ -61,7 +62,18 @@ itemsRouter.put('/:id', async (c) => {
   const existing = db.select().from(items).where(and(eq(items.id, id), eq(items.userId, userId))).get()
   if (!existing) return c.json({ error: '物品不存在' }, 404)
 
-  db.update(items).set(body).where(and(eq(items.id, id), eq(items.userId, userId))).run()
+  const updates: Record<string, unknown> = {}
+  if (body.name !== undefined) updates.name = body.name
+  if (body.categoryId !== undefined) updates.categoryId = body.categoryId
+  if (body.roomId !== undefined) updates.roomId = body.roomId
+  if (body.price !== undefined) updates.price = body.price
+  if (body.quantity !== undefined) updates.quantity = body.quantity
+  if (body.description !== undefined) updates.description = body.description
+  if (body.notes !== undefined) updates.description = body.notes
+  if (body.imageUrl !== undefined) updates.imageUrl = body.imageUrl
+  if (body.date !== undefined) updates.date = body.date || null
+
+  db.update(items).set(updates).where(and(eq(items.id, id), eq(items.userId, userId))).run()
   const updated = db.select().from(items).where(eq(items.id, id)).get()
   return c.json(updated)
 })

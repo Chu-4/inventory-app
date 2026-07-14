@@ -38,7 +38,7 @@ export default function ItemListPage({ listType, categoryId, roomId, onNavigate,
       </div>
 
       <div className="browse-content">
-        {filteredItems.length === 0 ? (
+        {items.length === 0 ? (
           <div className="empty-state"><p>这个列表还是空的</p></div>
         ) : (
           <div className="browse-item-list">

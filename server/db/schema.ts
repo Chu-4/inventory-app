@@ -32,6 +32,7 @@ export const items = sqliteTable('items', {
   description: text('description'),
   imageUrl: text('image_url'),
   favorite: integer('favorite', { mode: 'boolean' }).notNull().default(false),
+  date: text('date'),
   createdAt: text('created_at').notNull(),
   userId: text('user_id').notNull(),
 })
