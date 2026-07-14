@@ -1,17 +1,25 @@
+import { useEffect, useState } from 'react';
 import { Button, Card, Divider, Typography, Upload, Modal } from 'antd';
 import { DownloadOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons';
-import { storage } from '../utils/storage';
+import { api } from '../utils/api';
 import BottomNav from '../components/BottomNav';
 
 const { Text } = Typography;
 
 export default function ProfilePage({ onNavigate, onRefresh }) {
-  const stats = storage.getStats();
-  const items = storage.getItems();
-  const storageKB = (new Blob([JSON.stringify(items)]).size / 1024).toFixed(1);
+  const [items, setItems] = useState([]);
+  const [favoriteCount, setFavoriteCount] = useState(0);
 
-  const handleExport = () => {
-    const data = storage.exportData();
+  useEffect(() => {
+    api.getItems().then(setItems);
+    api.getFavoriteItems().then(favs => setFavoriteCount(favs.length));
+  }, []);
+
+  const totalValue = items.reduce((sum, i) => sum + (parseFloat(i.price) || 0), 0);
+
+  const handleExport = async () => {
+    const [its, cats, rms] = await Promise.all([api.getItems(), api.getCategories(), api.getRooms()]);
+    const data = { items: its, categories: cats, rooms: rms, exportTime: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -31,8 +39,9 @@ export default function ProfilePage({ onNavigate, onRefresh }) {
           content: '这将覆盖现有的所有数据，确认继续？',
           okText: '确认导入',
           cancelText: '取消',
-          onOk: () => {
-            storage.importData(data);
+          onOk: async () => {
+            // 逐条写入，简单实现
+            if (data.items) await Promise.all(data.items.map(i => api.addItem(i)));
             onRefresh?.();
           },
         });
@@ -68,10 +77,9 @@ export default function ProfilePage({ onNavigate, onRefresh }) {
         <Card className="profile-card" variant="outlined">
           <Text className="profile-card-label">数据统计</Text>
           {[
-            { label: '物品总数', value: `${stats.totalItems} 件` },
-            { label: '收藏数', value: `${storage.getFavoriteItems().length} 件` },
-            { label: '记录总价值', value: `¥${stats.totalValue.toFixed(2)}` },
-            { label: '本地存储', value: `${storageKB} KB` },
+            { label: '物品总数', value: `${items.length} 件` },
+            { label: '收藏数', value: `${favoriteCount} 件` },
+            { label: '记录总价值', value: `¥${totalValue.toFixed(2)}` },
           ].map(({ label, value }, idx, arr) => (
             <div key={label}>
               <div className="profile-stat-row">
@@ -101,11 +109,7 @@ export default function ProfilePage({ onNavigate, onRefresh }) {
         <div className="profile-about">
           <div className="profile-about-title">物品整理 v2.0</div>
           <Text className="profile-about-text">
-            数据保存在浏览器 localStorage 中<br />
-            完全私密，离线可用
-            {!storage.isPersistent() && (
-              <><br /><span style={{ color: '#e67e22' }}>当前环境无法持久化存储</span></>
-            )}
+            数据保存在服务器，多设备同步可用
           </Text>
         </div>
       </div>

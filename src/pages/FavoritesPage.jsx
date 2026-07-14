@@ -1,14 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LeftOutlined, HeartFilled } from '@ant-design/icons';
-import { storage } from '../utils/storage';
+import { api } from '../utils/api';
 import ItemCard from '../components/ItemCard';
 
 export default function FavoritesPage({ onNavigate, onBack, onRefresh }) {
-  const [items, setItems] = useState(storage.getFavoriteItems());
+  const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [rooms, setRooms] = useState([]);
 
-  const handleToggleFavorite = (id) => {
-    storage.toggleFavorite(id);
-    setItems(storage.getFavoriteItems());
+  const loadItems = () => api.getFavoriteItems().then(setItems);
+
+  useEffect(() => {
+    loadItems();
+    api.getCategories().then(setCategories);
+    api.getRooms().then(setRooms);
+  }, []);
+
+  const handleToggleFavorite = async (id) => {
+    await api.toggleFavorite(id);
+    loadItems();
     onRefresh?.();
   };
 
@@ -36,6 +46,8 @@ export default function FavoritesPage({ onNavigate, onBack, onRefresh }) {
               item={item}
               variant="favorite"
               showFavorite
+              categories={categories}
+              rooms={rooms}
               onToggleFavorite={handleToggleFavorite}
               onClick={() => onNavigate('item-detail', { itemId: item.id })}
             />

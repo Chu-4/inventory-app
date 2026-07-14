@@ -1,30 +1,40 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LeftOutlined, CameraOutlined, MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import { Form, Input, Select, DatePicker, InputNumber, Upload, message } from 'antd';
-import { storage } from '../utils/storage';
+import { api } from '../utils/api';
 import { imageUtils } from '../utils/helpers';
 import dayjs from 'dayjs';
 
 export default function ItemFormPage({ itemId, categoryId, roomId, onNavigate, onBack, onRefresh }) {
-  const [existing] = useState(itemId ? storage.getItem(itemId) : null);
+  const [existing, setExisting] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [rooms, setRooms] = useState([]);
   const [form] = Form.useForm();
-  const [imageBase64, setImageBase64] = useState(existing?.image || null);
-  const [quantity, setQuantity] = useState(existing?.quantity ?? 1);
-  const categories = storage.getCategories();
-  const rooms = storage.getRooms();
+  const [imageBase64, setImageBase64] = useState(null);
+  const [quantity, setQuantity] = useState(1);
 
-  const initialValues = existing
-    ? {
-        ...existing,
-        date: existing.date ? dayjs(existing.date) : null,
-        quantity: existing.quantity ?? 1,
-      }
-    : {
-        categoryId: categoryId || undefined,
-        roomId: roomId || undefined,
-        quantity: 1,
-        date: dayjs(),
-      };
+  useEffect(() => {
+    api.getCategories().then(setCategories);
+    api.getRooms().then(setRooms);
+    if (itemId) {
+      api.getItem(itemId).then(item => {
+        setExisting(item);
+        setImageBase64(item.imageUrl || null);
+        setQuantity(item.quantity ?? 1);
+        form.setFieldsValue({
+          ...item,
+          date: item.date ? dayjs(item.date) : null,
+        });
+      });
+    }
+  }, [itemId]);
+
+  const initialValues = itemId ? undefined : {
+    categoryId: categoryId || undefined,
+    roomId: roomId || undefined,
+    quantity: 1,
+    date: dayjs(),
+  };
 
   const handleImageUpload = async (file) => {
     const compressed = await imageUtils.compressImage(file);
@@ -35,21 +45,19 @@ export default function ItemFormPage({ itemId, categoryId, roomId, onNavigate, o
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-      const isDoujin = values.subcategoryId === '5-1';
       const data = {
         ...values,
-        image: imageBase64,
+        imageUrl: imageBase64,
         quantity,
         date: values.date ? values.date.format('YYYY-MM-DD') : '',
-        price: values.price !== undefined ? String(values.price) : '',
-        ip: isDoujin ? (values.ip?.trim() || '') : undefined,
+        price: values.price !== undefined ? Number(values.price) : null,
       };
       if (existing) {
-        storage.updateItem(itemId, data);
+        await api.updateItem(itemId, data);
         onRefresh?.();
         onNavigate('item-detail', { itemId }, { replace: true });
       } else {
-        const created = storage.addItem(data);
+        const created = await api.addItem(data);
         onRefresh?.();
         onNavigate('item-detail', { itemId: created.id }, { replace: true });
       }

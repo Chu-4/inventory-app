@@ -1,6 +1,5 @@
 import { HeartFilled } from '@ant-design/icons';
 import { EnvironmentOutlined } from '@ant-design/icons';
-import { storage } from '../utils/storage';
 import { formatPrice } from '../utils/helpers';
 
 export default function ItemCard({
@@ -9,16 +8,18 @@ export default function ItemCard({
   variant = 'default',
   showFavorite = false,
   onToggleFavorite,
+  categories = [],
+  rooms = [],
 }) {
-  const category = storage.getCategory(item.categoryId);
-  const room = storage.getRoom(item.roomId);
+  const category = categories.find(c => c.id === item.categoryId);
+  const room = rooms.find(r => r.id === item.roomId);
 
   if (variant === 'search') {
     return (
       <div className="item-card item-card--search" onClick={onClick} role="button" tabIndex={0}>
         <div className="item-card-thumb">
-          {item.image ? (
-            <img src={item.image} alt="" />
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt="" />
           ) : (
             <div className="item-card-thumb-placeholder" />
           )}
@@ -41,7 +42,7 @@ export default function ItemCard({
     return (
       <div className="item-card item-card--favorite" onClick={onClick} role="button" tabIndex={0}>
         <div className="item-card-thumb">
-          {item.image ? <img src={item.image} alt="" /> : <div className="item-card-thumb-placeholder" />}
+          {item.imageUrl ? <img src={item.imageUrl} alt="" /> : <div className="item-card-thumb-placeholder" />}
         </div>
         <div className="item-card-body">
           <div className="item-card-name">{item.name}</div>
@@ -67,7 +68,7 @@ export default function ItemCard({
   return (
     <div className="item-card item-card--default" onClick={onClick} role="button" tabIndex={0}>
       <div className="item-card-thumb">
-        {item.image ? <img src={item.image} alt="" /> : <div className="item-card-thumb-placeholder" />}
+        {item.imageUrl ? <img src={item.imageUrl} alt="" /> : <div className="item-card-thumb-placeholder" />}
       </div>
       <div className="item-card-body">
         <div className="item-card-name">{item.name}</div>

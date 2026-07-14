@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   SearchOutlined,
   PlayCircleOutlined,
@@ -7,7 +8,7 @@ import {
   CloudOutlined,
   BulbOutlined,
 } from '@ant-design/icons';
-import { storage } from '../utils/storage';
+import { api } from '../utils/api';
 import BottomNav from '../components/BottomNav';
 
 const ROOM_ICONS = {
@@ -20,8 +21,15 @@ const ROOM_ICONS = {
 };
 
 export default function RoomsPage({ onNavigate }) {
-  const rooms = storage.getRooms();
-  const stats = storage.getStats();
+  const [rooms, setRooms] = useState([]);
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    api.getRooms().then(setRooms);
+    api.getItems().then(setItems);
+  }, []);
+
+  const countByRoom = (roomId) => items.filter(i => i.roomId === roomId).length;
 
   return (
     <div className="page page--rooms">
@@ -35,7 +43,7 @@ export default function RoomsPage({ onNavigate }) {
       <div className="room-grid">
         {rooms.map(room => {
           const Icon = ROOM_ICONS[room.icon] || HomeOutlined;
-          const count = stats.byRoom[room.id]?.count || 0;
+          const count = countByRoom(room.id);
           return (
             <button
               key={room.id}

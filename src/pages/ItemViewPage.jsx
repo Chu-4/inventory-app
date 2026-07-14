@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   LeftOutlined,
   HeartOutlined,
@@ -13,7 +13,7 @@ import {
   CopyrightOutlined,
 } from '@ant-design/icons';
 import { Popconfirm, Upload, message } from 'antd';
-import { storage } from '../utils/storage';
+import { api } from '../utils/api';
 import { imageUtils, formatPrice } from '../utils/helpers';
 
 function InfoRow({ icon: Icon, label, value, valueClass }) {
@@ -32,7 +32,15 @@ function InfoRow({ icon: Icon, label, value, valueClass }) {
 }
 
 export default function ItemViewPage({ itemId, onNavigate, onBack, onRefresh }) {
-  const [item, setItem] = useState(() => storage.getItem(itemId));
+  const [item, setItem] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [rooms, setRooms] = useState([]);
+
+  useEffect(() => {
+    api.getItem(itemId).then(setItem).catch(() => setItem(null));
+    api.getCategories().then(setCategories);
+    api.getRooms().then(setRooms);
+  }, [itemId]);
 
   if (!item) {
     return (
@@ -42,26 +50,26 @@ export default function ItemViewPage({ itemId, onNavigate, onBack, onRefresh }) 
     );
   }
 
-  const category = storage.getCategory(item.categoryId);
-  const room = storage.getRoom(item.roomId);
-  const sub = category?.subcategories?.find(s => s.id === item.subcategoryId);
+  const category = categories.find(c => c.id === item.categoryId);
+  const room = rooms.find(r => r.id === item.roomId);
+  const sub = categories.find(c => c.id === item.subcategoryId);
 
-  const handleToggleFavorite = () => {
-    storage.toggleFavorite(item.id);
-    setItem(storage.getItem(item.id));
+  const handleToggleFavorite = async () => {
+    const { favorite } = await api.toggleFavorite(item.id);
+    setItem(prev => ({ ...prev, favorite }));
     onRefresh?.();
   };
 
-  const handleDelete = () => {
-    storage.deleteItem(item.id);
+  const handleDelete = async () => {
+    await api.deleteItem(item.id);
     onRefresh?.();
     onBack();
   };
 
   const handleImageUpload = async (file) => {
     const compressed = await imageUtils.compressImage(file);
-    storage.updateItem(item.id, { image: compressed });
-    setItem(storage.getItem(item.id));
+    await api.updateItem(item.id, { imageUrl: compressed });
+    setItem(prev => ({ ...prev, imageUrl: compressed }));
     onRefresh?.();
     return false;
   };
@@ -88,8 +96,8 @@ export default function ItemViewPage({ itemId, onNavigate, onBack, onRefresh }) 
         </div>
 
         <div className="detail-image-area">
-          {item.image ? (
-            <img src={item.image} alt={item.name} className="detail-image" />
+          {item.imageUrl ? (
+            <img src={item.imageUrl} alt={item.name} className="detail-image" />
           ) : (
             <Upload accept="image/*" showUploadList={false} beforeUpload={handleImageUpload}>
               <div className="detail-image-placeholder">

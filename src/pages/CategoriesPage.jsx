@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SearchOutlined, UnorderedListOutlined } from '@ant-design/icons';
-import { storage } from '../utils/storage';
+import { api } from '../utils/api';
 import BottomNav from '../components/BottomNav';
 import ItemCard from '../components/ItemCard';
 
 export default function CategoriesPage({ onNavigate }) {
-  const [items] = useState(storage.getItems());
-  const categories = storage.getCategories();
+  const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    api.getItems().then(setItems);
+    api.getCategories().then(setCategories);
+  }, []);
 
   const grouped = useMemo(() => {
     return categories
@@ -34,7 +39,7 @@ export default function CategoriesPage({ onNavigate }) {
       <div className="browse-content">
         {grouped.length === 0 ? (
           <div className="empty-state">
-            <p>还没有物品</p>
+            <p className="empty-state-text">还没有物品</p>
             <button type="button" className="btn-primary" onClick={() => onNavigate('item-add')}>
               添加第一件物品
             </button>
@@ -51,6 +56,8 @@ export default function CategoriesPage({ onNavigate }) {
                   <ItemCard
                     key={item.id}
                     item={item}
+                    categories={categories}
+                    rooms={[]}
                     onClick={() => onNavigate('item-detail', { itemId: item.id })}
                   />
                 ))}

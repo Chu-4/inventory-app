@@ -1,15 +1,29 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
-import { storage } from '../utils/storage';
+import { api } from '../utils/api';
 import { searchUtils } from '../utils/helpers';
 import ItemCard from '../components/ItemCard';
 
 export default function SearchPage({ onNavigate, onBack, initialKeyword = '' }) {
   const [keyword, setKeyword] = useState(initialKeyword);
-  const [items] = useState(storage.getItems());
-  const categories = storage.getCategories();
-  const rooms = storage.getRooms();
-  const [recentSearches, setRecentSearches] = useState(storage.getRecentSearches());
+  const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('recent_searches') || '[]') } catch { return [] }
+  });
+
+  useEffect(() => {
+    api.getItems().then(setItems);
+    api.getCategories().then(setCategories);
+    api.getRooms().then(setRooms);
+  }, []);
+
+  const saveRecentSearch = (kw) => {
+    const list = [kw, ...recentSearches.filter(s => s !== kw)].slice(0, 8);
+    setRecentSearches(list);
+    localStorage.setItem('recent_searches', JSON.stringify(list));
+  };
 
   const results = useMemo(() => {
     if (!keyword.trim()) return [];
@@ -18,14 +32,11 @@ export default function SearchPage({ onNavigate, onBack, initialKeyword = '' }) 
 
   const handleSearch = (kw) => {
     setKeyword(kw);
-    if (kw.trim()) {
-      storage.addRecentSearch(kw.trim());
-      setRecentSearches(storage.getRecentSearches());
-    }
+    if (kw.trim()) saveRecentSearch(kw.trim());
   };
 
   const handleResultClick = (item) => {
-    if (keyword.trim()) storage.addRecentSearch(keyword.trim());
+    if (keyword.trim()) saveRecentSearch(keyword.trim());
     onNavigate('item-detail', { itemId: item.id });
   };
 
@@ -73,6 +84,8 @@ export default function SearchPage({ onNavigate, onBack, initialKeyword = '' }) 
                   key={item.id}
                   item={item}
                   variant="search"
+                  categories={categories}
+                  rooms={rooms}
                   onClick={() => handleResultClick(item)}
                 />
               ))}
